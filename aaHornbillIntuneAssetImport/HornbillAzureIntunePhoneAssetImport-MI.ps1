@@ -11,16 +11,11 @@
 Initial Release
 .DESCRIPTION 
  Azure Automation Runbook to retrieve mobile assets from Intune, and import them into your Hornbill instance CMDB. 
- Modified to use native Graph PowerShell and user-assigned Managed Identity. Add an automation account variable for user-assigned managed identity client ID
+ Modified to use native Graph PowerShell and user-assigned Managed Identity. Add an automation account variable for user-assigned managed identity client ID. Required graph API permission: DeviceManagementManagedDevices.Read.All
 #>
 
 #Requires -Module @{ModuleVersion = '1.1.0'; ModuleName = 'HornbillAPI'}
 #Requires -Module @{ModuleVersion = '1.1.1'; ModuleName = 'HornbillHelpers'}
-
-# Define Intune Params
-$AutomationCred = "IntuneAutomation"
-$AutomationVar = "AppClientID"
-$Resource = "https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?`$top=100"
 
 # Define Hornbill Params
 $APIKey = "HornbillAPIKey" # Points to your Runbook variable that holds your Hornbill API Key
@@ -63,11 +58,8 @@ try {
         $graphConnection = Connect-MgGraph -ClientId $settings.ClientId -TenantId $settings.TenantId -CertificateThumbprint $settings.Thumbprint
         #Select-MgProfile -Name "v1.0" 
     }
-    #$AuthToken = $env:graphToken
-
-    $AuthToken = @{"Authorization" = "Bearer $($env:graphToken)"}
-
     Write-Output "Connected Graph: $graphConnection" -Verbose
+
 } catch [System.Exception] {
     Write-Warning -Message "Failed to retrieve auth token"
 }
