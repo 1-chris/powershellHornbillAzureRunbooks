@@ -20,7 +20,7 @@ Initial Release
 # Define Hornbill Params
 $APIKey = "HornbillAPIKey" # Points to your Runbook variable that holds your Hornbill API Key
 $InstanceID = "HornbillInstance" # Points to your Runbook variable that holds your Hornbill instance ID
-$AssetClass = "mobileDevice" # Asset Class for Mobile Devices in your Hornbill instance
+$AssetClass = "computer" # Asset Class for Mobile Devices in your Hornbill instance
 $AssetType = "1" # Desktop default asset type
 $AssetEntity = "AssetsComputer" # Entity name of the Hornbill entity used to check for existing assets 
 $AssetUniqueColumn = "h_serial_number" # Column in the above entity used to check for existing assets
