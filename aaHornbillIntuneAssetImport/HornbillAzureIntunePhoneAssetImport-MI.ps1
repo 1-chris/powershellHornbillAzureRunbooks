@@ -21,21 +21,20 @@ Initial Release
 $APIKey = "HornbillAPIKey" # Points to your Runbook variable that holds your Hornbill API Key
 $InstanceID = "HornbillInstance" # Points to your Runbook variable that holds your Hornbill instance ID
 $AssetClass = "mobileDevice" # Asset Class for Mobile Devices in your Hornbill instance
-$AssetType = "77" # Primary Key for the "Smart Phone" asset type in your Hornbill instance
+$AssetType = "10" # Smart Phone default asset type
 $AssetEntity = "AssetsMobileDevice" # Entity name of the Hornbill entity used to check for existing assets 
 $AssetUniqueColumn = "h_serial_number" # Column in the above entity used to check for existing assets
 
 #Import required modules
 try {
-    Import-Module -Name HornbillAPI -ErrorAction Stop -WarningAction silentlyContinue
-    Import-Module -Name HornbillHelpers -ErrorAction Stop -WarningAction silentlyContinue
+    Import-Module -Name Microsoft.Graph.DeviceManagement -ErrorAction Stop -WarningAction SilentlyContinue
+    Import-Module -Name HornbillAPI -ErrorAction Stop -WarningAction SilentlyContinue
+    Import-Module -Name HornbillHelpers -ErrorAction Stop -WarningAction SilentlyContinue
 } catch {
     Write-Warning -Message "Failed to import modules"
 }
 
 #Read Creds and Vars
-# $Credential = Get-AutomationPSCredential -Name $AutomationCred
-# $AppClientID = Get-AutomationVariable -Name $AutomationVar
 $APIKey = Get-AutomationVariable -Name $APIKey
 $Instance = Get-AutomationVariable -Name $InstanceID
 $ManagedIdentityClientId = Get-AutomationVariable -Name "ManagedIdentityClientId"
@@ -46,22 +45,15 @@ Set-HB-Instance -Instance $Instance -Key $APIKey
 #region Connect MgGraph - with REST Access token
 #Get auth token
 try {
-    if ($env:IDENTITY_ENDPOINT) {
-        $res = "https://graph.microsoft.com/"
-        $uri = "$($env:IDENTITY_ENDPOINT)?resource=$($res)&client_id=$($ManagedIdentityClientId)"
-        $graphAccessToken = Invoke-RestMethod -Uri $uri -Method 'GET' -Headers @{'X-IDENTITY-HEADER' = "$env:IDENTITY_HEADER"; "Metadata" = "True" } -ContentType 'application/x-www-form-urlencoded'
-        $env:graphToken = $graphAccessToken.access_token  
-        $graphConnection = Connect-MgGraph -AccessToken $env:graphToken 
-    }
-    else {
-        $settings = (Get-Content -Path ".\local.settings.json" | ConvertFrom-Json).Values 
-        $graphConnection = Connect-MgGraph -ClientId $settings.ClientId -TenantId $settings.TenantId -CertificateThumbprint $settings.Thumbprint
-        #Select-MgProfile -Name "v1.0" 
-    }
-    Write-Output "Connected Graph: $graphConnection" -Verbose
+    $res = "https://graph.microsoft.com/"
+    $uri = "$($env:IDENTITY_ENDPOINT)?resource=$($res)&client_id=$($ManagedIdentityClientId)"
+    $graphAccessToken = Invoke-RestMethod -Uri $uri -Method 'GET' -Headers @{'X-IDENTITY-HEADER' = "$env:IDENTITY_HEADER"; "Metadata" = "True" } -ContentType 'application/x-www-form-urlencoded'
+    $env:graphToken = $graphAccessToken.access_token  
+    $graphConnection = Connect-MgGraph -AccessToken $env:graphToken 
 
+    Write-Output "Connected Graph: $graphConnection" -Verbose
 } catch [System.Exception] {
-    Write-Warning -Message "Failed to retrieve auth token"
+    Write-Warning -Message "Failed to authenticate using Managed Identity"
 }
 #endregion
 
@@ -74,9 +66,9 @@ $AssetsProcessed = @{
 }
 
 try {
-    Write-Output "Retrieving managed devices"
-    $ManagedDevices = Get-MgDeviceManagementManagedDevice -All 
-    Write-Output "Managed device count: $($ManagedDevices.Count)"
+    Write-Output "Retrieving managed devices" -Verbose
+    $ManagedDevices = Get-MgDeviceManagementManagedDevice -All | Where-Object {$_.OperatingSystem -like "Android*" -or $_.OperatingSystem -like "iOS*"}
+    Write-Output "Managed device count: $($ManagedDevices.Count)" -Verbose
 
     foreach ($Device in $ManagedDevices) {
         $AssetsProcessed.found++
